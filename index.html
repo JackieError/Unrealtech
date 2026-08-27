@@ -14,6 +14,8 @@
   <link rel="stylesheet" href="market.css" />
   <link rel="stylesheet" href="format.css" />
   <link rel="stylesheet" href="deep.css" />
+  <link rel="stylesheet" href="library.css" />
+  <link rel="stylesheet" href="grouping.css" />
 </head>
 <body>
   <div class="shell">
@@ -79,6 +81,10 @@
         <section class="deep-dive" id="deepDive"></section>
         <div class="cluster-summary" id="clusterSummary"></div>
         <div class="cluster-list" id="clusterList"></div>
+        <section class="library-panel">
+          <div class="library-head"><div><p class="eyebrow">FULL EVIDENCE</p><h3>분석 대상 전체 콘텐츠</h3><p class="muted" id="libraryCount"></p></div><div class="library-tools"><input id="librarySearch" placeholder="영상 제목 검색"><select id="libraryTopic"><option value="all">전체 주제</option></select><select id="libraryGroup"><option value="topic">주제별 묶기</option><option value="format">포맷별 묶기</option><option value="month">게시 월별 묶기</option><option value="grade">스코어별 묶기</option><option value="none">그룹 없음</option></select><select id="librarySort"><option value="score">경쟁력 점수순</option><option value="views">조회수순</option><option value="retention">시청률순</option><option value="subs">구독 전환순</option><option value="engagement">참여율순</option><option value="date">최신순</option></select></div></div>
+          <div class="table-wrap"><table><thead><tr><th>#</th><th>콘텐츠</th><th>스코어</th><th>포맷</th><th>주제</th><th>조회수</th><th>시청률</th><th>평균 시청</th><th>구독/천회</th><th>참여율</th></tr></thead><tbody id="fullLibrary"></tbody></table></div>
+        </section>
       </section>
 
       <section id="strategy" class="view">

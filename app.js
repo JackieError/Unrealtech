@@ -19,7 +19,7 @@ function render(){const d=filtered();const views=d.reduce((a,x)=>a+x.views,0), i
  $('#scoreValue').textContent=channel;$('#scoreRing').style.background=`conic-gradient(var(--gold) ${channel}%,#353530 0)`;
  const kpis=[['총 조회수',fmt(views),'API 집계','82'],['노출 클릭률',ctr==null?'수집 중':ctr.toFixed(1)+'%',ctr==null?'Reporting API':'노출 가중','64'],['평균 시청률',ret.toFixed(1)+'%','API 집계','76'],['구독자 순증',`+${fmt(subs)}`,'API 집계','88']];
  $('#kpiGrid').innerHTML=kpis.map((x,i)=>`<div class="kpi"><div class="top"><span>${x[0]}</span><span>0${i+1}</span></div><strong>${x[1]}</strong><span class="delta">↑ ${x[2]}</span><div class="bar"><i style="width:${x[3]}%"></i></div></div>`).join('');
- renderScatter(d);renderInsights(d,ctr,ret);renderTable(d);renderCards();renderFormatStrip(d);renderDeepAnalysis(clusterFormatData(d));renderClusters(clusterFormatData(d));renderStrategy(d,ctr,ret);
+ renderScatter(d);renderInsights(d,ctr,ret);renderTable(d);renderCards();renderFormatStrip(d);renderDeepAnalysis(clusterFormatData(d));renderClusters(clusterFormatData(d));renderFullLibrary(clusterFormatData(d));renderStrategy(d,ctr,ret);
 }
 function renderScatter(d){const maxV=Math.max(...d.map(x=>x.views),1),hasCtr=d.some(x=>x.ctr!=null),med=Math.max(median(d.map(x=>x.views)),1);$('.x-label').innerHTML=hasCtr?'낮은 클릭률 <span>←</span> 노출 클릭률 <span>→</span> 높은 클릭률':'낮은 조회 성과 <span>←</span> 채널 중앙값 대비 <span>→</span> 높은 조회 성과';$('#scatter').querySelectorAll('.bubble').forEach(x=>x.remove());d.forEach(x=>{const b=document.createElement('div'),xpos=hasCtr?(x.ctr||0)/10*100:x.views/med*50;b.className='bubble '+(score(x)>=80?'top':'');b.style.left=`${Math.min(94,Math.max(5,xpos))}%`;b.style.bottom=`${Math.min(93,Math.max(5,(x.retention-30)/45*100))}%`;b.style.setProperty('--s',`${22+Math.sqrt(x.views/maxV)*28}px`);b.dataset.label=x.title.split(',')[0].slice(0,12);b.title=`${x.title}\n${x.ctr==null?'CTR 수집 중':'CTR '+x.ctr+'%'} · 시청률 ${x.retention}%`;$('#scatter').appendChild(b)})}
 function renderInsights(d,ctr,ret){const hidden=ctr==null?null:[...d].filter(x=>x.retention>ret&&x.ctr<ctr).sort((a,b)=>b.retention-a.retention)[0];const engine=[...d].sort((a,b)=>score(b)-score(a))[0];const sub=[...d].sort((a,b)=>b.subs/b.views-a.subs/a.views)[0];const items=[hidden&&[`숨은 보석의 썸네일을 교체하세요`,`${hidden.title}은 시청률 ${hidden.retention}%지만 CTR은 ${hidden.ctr}%입니다.`],engine&&[`상위 포맷을 시리즈화하세요`,`${engine.title}이 현재 사용 가능한 지표 기준 경쟁력 ${score(engine)}점입니다.`],sub&&[`구독 전환 공식을 재사용하세요`,`${sub.title}은 조회 1천 회당 구독자 ${(sub.subs/sub.views*1000).toFixed(1)}명으로 가장 효율적입니다.`],ctr==null&&['CTR 수집을 시작했습니다','Reporting API의 reach 보고서가 생성되면 노출과 CTR을 자동 반영합니다. 현재 점수에는 CTR을 넣지 않았습니다.']].filter(Boolean);$('#insightList').innerHTML=items.slice(0,3).map((x,i)=>`<div class="insight"><span class="num">0${i+1}</span><div><b>${x[0]}</b><p>${x[1]}</p></div></div>`).join('')}
@@ -73,3 +73,26 @@ function renderDeepAnalysis(d){
   const cardHtml=cards.map(x=>'<article class="deep-card '+x[5]+'"><span class="signal">'+x[0]+'</span><h4>'+x[1]+'</h4><strong>'+x[2]+'</strong><div class="evidence">'+x[3]+'</div><p>'+x[4]+'</p></article>').join('');
   el.innerHTML='<div class="deep-head"><div><p class="eyebrow">DEEP DIAGNOSIS · '+format+'</p><h3>조회수가 아니라<br>반복 가능한 원인을 봅니다.</h3><p>'+d.length+'편의 상위 10%와 나머지를 분리해 성과 차이를 계산했습니다.</p></div><div class="deep-verdict"><span>EXECUTIVE VERDICT</span><b>'+verdict+'</b></div></div><div class="deep-grid">'+cardHtml+'</div>';
 }
+function durationLabel(seconds){const s=Math.round(seconds||0),m=Math.floor(s/60);return m+':'+String(s%60).padStart(2,'0')}
+function renderFullLibrary(d){
+  const body=$('#fullLibrary');if(!body)return;
+  const topicEl=$('#libraryTopic'),current=topicEl.value,topics=[...new Set(d.map(clusterName))].sort();
+  topicEl.innerHTML='<option value="all">전체 주제</option>'+topics.map(x=>'<option value="'+x+'">'+x+'</option>').join('');
+  topicEl.value=topics.includes(current)?current:'all';
+  const q=($('#librarySearch').value||'').trim().toLowerCase(),topic=topicEl.value,sort=$('#librarySort').value,group=$('#libraryGroup').value;
+  let rows=d.filter(x=>(!q||x.title.toLowerCase().includes(q))&&(topic==='all'||clusterName(x)===topic));
+  const metrics={score:x=>score(x),views:x=>x.views,retention:x=>x.retention,subs:x=>x.subs/Math.max(x.views,1)*1000,engagement:x=>(x.likes+x.comments)/Math.max(x.views,1)*100,date:x=>new Date(x.date).getTime()};
+  rows.sort((a,b)=>metrics[sort](b)-metrics[sort](a));
+  const grade=x=>score(x)>=80?'확장 후보':score(x)>=65?'관찰·유지':'개선 필요';
+  const groupKey=x=>group==='topic'?clusterName(x):group==='format'?x.type:group==='month'?x.date.slice(0,7):group==='grade'?grade(x):'전체 콘텐츠';
+  const groups=new Map();rows.forEach(x=>{const k=groupKey(x);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(x)});
+  $('#libraryCount').textContent='현재 조건 '+rows.length+'편 · '+groups.size+'개 그룹 · 전체 분석 대상 '+d.length+'편';
+  let rank=0,html='';
+  for(const [name,items] of groups){
+    const groupViews=median(items.map(x=>x.views)),groupRet=items.reduce((a,x)=>a+x.retention*x.views,0)/Math.max(items.reduce((a,x)=>a+x.views,0),1),groupSub=items.reduce((a,x)=>a+x.subs,0)/Math.max(items.reduce((a,x)=>a+x.views,0),1)*1000;
+    if(group!=='none')html+='<tr class="library-group"><td colspan="10"><span class="group-title">'+name+'</span><span class="group-meta">'+items.length+'편 · 조회 중앙값 '+fmt(groupViews)+' · 시청률 '+groupRet.toFixed(1)+'% · 구독 '+groupSub.toFixed(1)+'/천회</span></td></tr>';
+    for(const x of items){rank++;const sub=x.subs/Math.max(x.views,1)*1000,eng=(x.likes+x.comments)/Math.max(x.views,1)*100,s=score(x),gradeClass=s>=80?'high':s<65?'low':'';html+='<tr><td>'+rank+'</td><td class="video-name">'+x.title+'<br><small class="muted">'+x.date+'</small></td><td><span class="grade '+gradeClass+'">'+s+'</span></td><td><span class="format-pill">'+x.type+'</span></td><td><span class="topic-pill">'+clusterName(x)+'</span></td><td>'+fmt(x.views)+'</td><td>'+x.retention.toFixed(1)+'%</td><td>'+durationLabel(x.avgDuration)+'</td><td>'+sub.toFixed(2)+'</td><td>'+eng.toFixed(2)+'%</td></tr>'}
+  }
+  body.innerHTML=html||'<tr><td colspan="10" class="library-empty">조건에 맞는 콘텐츠가 없습니다.</td></tr>';
+}
+$('#librarySearch').oninput=()=>renderFullLibrary(clusterFormatData(filtered()));$('#libraryTopic').onchange=()=>renderFullLibrary(clusterFormatData(filtered()));$('#libraryGroup').onchange=()=>renderFullLibrary(clusterFormatData(filtered()));$('#librarySort').onchange=()=>renderFullLibrary(clusterFormatData(filtered()));
