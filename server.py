@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Local OAuth/API server. Channel data stays on this machine."""
-import json, os, secrets, time, urllib.parse, urllib.request
+import json, os, re, secrets, time, urllib.parse, urllib.request
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 ROOT=Path(__file__).parent; PORT=int(os.getenv('PORT','4174'))
@@ -15,7 +15,7 @@ SCOPES='https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.
 TOKEN_FILE=ROOT/'token.json'
 try: saved_token=json.loads(TOKEN_FILE.read_text()) if TOKEN_FILE.exists() else None
 except Exception: saved_token=None
-session={'state':None,'token':saved_token};market_cache={}
+session={'state':None,'token':saved_token};market_cache={};playlist_cache={'expires':0,'types':{}}
 def save_token(value):
     TOKEN_FILE.write_text(json.dumps(value));os.chmod(TOKEN_FILE,0o600);session['token']=value
 def request(url,access=None,data=None,json_data=None):
@@ -65,6 +65,21 @@ def market_signal(access,topic):
     ordered=sorted(videos,key=lambda x:x['views'],reverse=True);values=sorted(x['views'] for x in videos)
     result={'topic':topic,'query':query,'supply':found.get('pageInfo',{}).get('totalResults',0),'competitorMedian':values[len(values)//2] if values else 0,'leaders':ordered[:3]}
     market_cache[topic]={'expires':time.time()+21600,'data':result};return result
+def playlist_types(access):
+    if playlist_cache['expires']>time.time():return playlist_cache['types']
+    raw=request('https://www.googleapis.com/youtube/v3/playlists?'+urllib.parse.urlencode({'part':'snippet','mine':'true','maxResults':50}),access);mapping={}
+    for p in raw.get('items',[]):
+        name=p.get('snippet',{}).get('title','');kind='오리지널' if '오리지널' in name else ('칼럼' if '칼럼' in name else None)
+        if not kind:continue
+        page=''
+        while True:
+            params={'part':'contentDetails','playlistId':p['id'],'maxResults':50}
+            if page:params['pageToken']=page
+            rows=request('https://www.googleapis.com/youtube/v3/playlistItems?'+urllib.parse.urlencode(params),access)
+            for x in rows.get('items',[]):mapping[x.get('contentDetails',{}).get('videoId')]=kind
+            page=rows.get('nextPageToken','')
+            if not page:break
+    playlist_cache.update({'expires':time.time()+21600,'types':mapping});return mapping
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self,*a,**kw):super().__init__(*a,directory=str(ROOT),**kw)
     def send_json(self,obj,status=200):
@@ -87,11 +102,15 @@ class Handler(SimpleHTTPRequestHandler):
                 access=access_token()
                 if not access:return self.send_json({'error':'YouTube 계정 연결이 필요합니다.'},401)
                 end=time.strftime('%Y-%m-%d');start=time.strftime('%Y-%m-%d',time.localtime(time.time()-90*86400));stats=analytics(access,start,end);ids=list(stats);items=[]
+                try:playlist_map=playlist_types(access)
+                except Exception:playlist_map={}
                 for i in range(0,len(ids),50):
                     q=urllib.parse.urlencode({'part':'snippet,contentDetails,statistics','id':','.join(ids[i:i+50])})
                     for v in request('https://www.googleapis.com/youtube/v3/videos?'+q,access).get('items',[]):
                         a=stats[v['id']];s=v.get('statistics',{});sn=v.get('snippet',{})
-                        items.append({'id':v['id'],'title':sn.get('title',''),'date':sn.get('publishedAt','')[:10],'thumbnail':sn.get('thumbnails',{}).get('medium',{}).get('url',''),'duration':v.get('contentDetails',{}).get('duration',''),'views':int(a.get('views',0)),'impressions':None,'ctr':None,'retention':float(a.get('averageViewPercentage',0)),'avgDuration':float(a.get('averageViewDuration',0)),'watchMinutes':float(a.get('estimatedMinutesWatched',0)),'subs':int(a.get('subscribersGained',0))-int(a.get('subscribersLost',0)),'likes':int(a.get('likes',s.get('likeCount',0))),'comments':int(a.get('comments',s.get('commentCount',0)))})
+                        title=sn.get('title','');description=sn.get('description','');format_text=title+' '+description[:500];duration=v.get('contentDetails',{}).get('duration','');parts=re.search(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?',duration);seconds=(int(parts.group(1) or 0)*3600+int(parts.group(2) or 0)*60+int(parts.group(3) or 0)) if parts else 0
+                        content_type=playlist_map.get(v['id']) or ('오리지널' if '오리지널' in format_text else ('칼럼' if '칼럼' in format_text else ('쇼츠' if '#short' in format_text.lower() or (0<seconds<=180) else ('라이브' if '라이브' in format_text or 'live' in title.lower() else '일반 영상'))))
+                        items.append({'id':v['id'],'title':title,'type':content_type,'date':sn.get('publishedAt','')[:10],'thumbnail':sn.get('thumbnails',{}).get('medium',{}).get('url',''),'duration':duration,'durationSeconds':seconds,'views':int(a.get('views',0)),'impressions':None,'ctr':None,'retention':float(a.get('averageViewPercentage',0)),'avgDuration':float(a.get('averageViewDuration',0)),'watchMinutes':float(a.get('estimatedMinutesWatched',0)),'subs':int(a.get('subscribersGained',0))-int(a.get('subscribersLost',0)),'likes':int(a.get('likes',s.get('likeCount',0))),'comments':int(a.get('comments',s.get('commentCount',0)))})
                 extras={}
                 for key,dim in [('traffic','insightTrafficSourceType'),('devices','deviceType'),('countries','country'),('subscribers','subscribedStatus')]:
                     try:extras[key]=analytics_report(access,start,end,dim,'views,estimatedMinutesWatched','-views',25)

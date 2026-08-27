@@ -12,6 +12,8 @@
   <link rel="stylesheet" href="api.css" />
   <link rel="stylesheet" href="clusters.css" />
   <link rel="stylesheet" href="market.css" />
+  <link rel="stylesheet" href="format.css" />
+  <link rel="stylesheet" href="deep.css" />
 </head>
 <body>
   <div class="shell">
@@ -72,7 +74,9 @@
       </section>
 
       <section id="clusters" class="view">
-        <div class="section-head"><div><p class="eyebrow">CONTENT FAMILIES</p><h2>콘텐츠 클러스터</h2><p class="muted">비슷한 주제와 포맷을 묶어, 개별 히트가 아니라 반복 가능한 승리 공식을 찾습니다.</p></div></div>
+        <div class="section-head"><div><p class="eyebrow">CONTENT FAMILIES</p><h2>콘텐츠 클러스터</h2><p class="muted">먼저 포맷을 나누고, 같은 포맷 안에서 주제별 승리 공식을 찾습니다.</p></div><select id="clusterFormat" class="cluster-select"><option value="all">전체 포맷</option><option value="오리지널">오리지널</option><option value="칼럼">칼럼</option><option value="쇼츠">쇼츠</option><option value="일반 영상">일반 영상</option><option value="라이브">라이브</option></select></div>
+        <div class="format-strip" id="formatStrip"></div>
+        <section class="deep-dive" id="deepDive"></section>
         <div class="cluster-summary" id="clusterSummary"></div>
         <div class="cluster-list" id="clusterList"></div>
       </section>

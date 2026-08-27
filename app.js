@@ -19,7 +19,7 @@ function render(){const d=filtered();const views=d.reduce((a,x)=>a+x.views,0), i
  $('#scoreValue').textContent=channel;$('#scoreRing').style.background=`conic-gradient(var(--gold) ${channel}%,#353530 0)`;
  const kpis=[['총 조회수',fmt(views),'API 집계','82'],['노출 클릭률',ctr==null?'수집 중':ctr.toFixed(1)+'%',ctr==null?'Reporting API':'노출 가중','64'],['평균 시청률',ret.toFixed(1)+'%','API 집계','76'],['구독자 순증',`+${fmt(subs)}`,'API 집계','88']];
  $('#kpiGrid').innerHTML=kpis.map((x,i)=>`<div class="kpi"><div class="top"><span>${x[0]}</span><span>0${i+1}</span></div><strong>${x[1]}</strong><span class="delta">↑ ${x[2]}</span><div class="bar"><i style="width:${x[3]}%"></i></div></div>`).join('');
- renderScatter(d);renderInsights(d,ctr,ret);renderTable(d);renderCards();renderClusters(d);renderStrategy(d,ctr,ret);
+ renderScatter(d);renderInsights(d,ctr,ret);renderTable(d);renderCards();renderFormatStrip(d);renderDeepAnalysis(clusterFormatData(d));renderClusters(clusterFormatData(d));renderStrategy(d,ctr,ret);
 }
 function renderScatter(d){const maxV=Math.max(...d.map(x=>x.views),1),hasCtr=d.some(x=>x.ctr!=null),med=Math.max(median(d.map(x=>x.views)),1);$('.x-label').innerHTML=hasCtr?'낮은 클릭률 <span>←</span> 노출 클릭률 <span>→</span> 높은 클릭률':'낮은 조회 성과 <span>←</span> 채널 중앙값 대비 <span>→</span> 높은 조회 성과';$('#scatter').querySelectorAll('.bubble').forEach(x=>x.remove());d.forEach(x=>{const b=document.createElement('div'),xpos=hasCtr?(x.ctr||0)/10*100:x.views/med*50;b.className='bubble '+(score(x)>=80?'top':'');b.style.left=`${Math.min(94,Math.max(5,xpos))}%`;b.style.bottom=`${Math.min(93,Math.max(5,(x.retention-30)/45*100))}%`;b.style.setProperty('--s',`${22+Math.sqrt(x.views/maxV)*28}px`);b.dataset.label=x.title.split(',')[0].slice(0,12);b.title=`${x.title}\n${x.ctr==null?'CTR 수집 중':'CTR '+x.ctr+'%'} · 시청률 ${x.retention}%`;$('#scatter').appendChild(b)})}
 function renderInsights(d,ctr,ret){const hidden=ctr==null?null:[...d].filter(x=>x.retention>ret&&x.ctr<ctr).sort((a,b)=>b.retention-a.retention)[0];const engine=[...d].sort((a,b)=>score(b)-score(a))[0];const sub=[...d].sort((a,b)=>b.subs/b.views-a.subs/a.views)[0];const items=[hidden&&[`숨은 보석의 썸네일을 교체하세요`,`${hidden.title}은 시청률 ${hidden.retention}%지만 CTR은 ${hidden.ctr}%입니다.`],engine&&[`상위 포맷을 시리즈화하세요`,`${engine.title}이 현재 사용 가능한 지표 기준 경쟁력 ${score(engine)}점입니다.`],sub&&[`구독 전환 공식을 재사용하세요`,`${sub.title}은 조회 1천 회당 구독자 ${(sub.subs/sub.views*1000).toFixed(1)}명으로 가장 효율적입니다.`],ctr==null&&['CTR 수집을 시작했습니다','Reporting API의 reach 보고서가 생성되면 노출과 CTR을 자동 반영합니다. 현재 점수에는 CTR을 넣지 않았습니다.']].filter(Boolean);$('#insightList').innerHTML=items.slice(0,3).map((x,i)=>`<div class="insight"><span class="num">0${i+1}</span><div><b>${x[0]}</b><p>${x[1]}</p></div></div>`).join('')}
@@ -44,3 +44,32 @@ $('#csvInput').onchange=e=>importFiles(e.target.files);const dz=$('#dropzone');d
 apiStatus();if(new URLSearchParams(location.search).get('connected')==='1'){history.replaceState({},'',location.pathname);loadApiData()}
 async function loadMarketSignals(){const groups={};data.forEach(x=>(groups[clusterName(x)]??=[]).push(x));const topics=Object.keys(groups).slice(0,6);try{const query=topics.map(x=>'topic='+encodeURIComponent(x)).join('&'),res=await fetch('/api/market/signals?'+query),j=await res.json();if(!res.ok)throw new Error(j.error);document.querySelector('.market-panel')?.remove();const cards=(j.signals||[]).map(s=>{const ours=median((groups[s.topic]||[]).map(x=>x.views)),ratio=ours/Math.max(s.competitorMedian,1);let kind,why,next;if(ratio>=1.5){kind='채널 고유 경쟁력';why='시장 상위권 중앙값보다 안될공학 묶음 성과가 높습니다.';next='설명 방식이 승리 요인입니다. 동일한 서사 구조로 후속편을 만드세요.'}else if(ratio>=.7){kind='시장 수혜 + 채널 적합';why='동일 주제 경쟁 영상과 비슷하거나 더 높은 성과입니다.';next='관심이 유지되는 동안 비교·후속 주제를 빠르게 연결하세요.'}else{kind='경쟁 과밀';why='시장 상위 영상 대비 내부 조회 중앙값이 낮습니다.';next='정면 경쟁 대신 안될공학만 설명할 기술적 질문으로 각도를 좁히세요.'}return `<div class="market-card"><span>${kind}</span><b>${s.topic}</b><p>${why}</p><small>최근 30일 경쟁 영상 ${fmt(s.supply)}개 · 경쟁 중앙값 ${fmt(s.competitorMedian)}</small><em>${next}</em></div>`}).join('');$('#clusterSummary').insertAdjacentHTML('afterend',`<section class="market-panel"><div><p class="eyebrow">MARKET CONTEXT</p><h3>성과가 나온 이유</h3></div><div class="market-grid">${cards}</div></section>`)}catch(e){console.warn('시장 신호 분석 보류',e)}}
 const loadApiDataBase=loadApiData;loadApiData=async function(){await loadApiDataBase();await loadMarketSignals()}
+function clusterFormatData(d){const selected=$('#clusterFormat')?.value||'all';return selected==='all'?d:d.filter(x=>x.type===selected)}
+function renderFormatStrip(d){const el=$('#formatStrip');if(!el)return;const formats=['오리지널','칼럼','쇼츠','일반 영상','라이브'],totalViews=d.reduce((a,x)=>a+x.views,0);el.innerHTML=formats.map(name=>{const items=d.filter(x=>x.type===name);if(!items.length)return '';const views=items.reduce((a,x)=>a+x.views,0),ret=items.reduce((a,x)=>a+x.retention*x.views,0)/Math.max(views,1),subs=items.reduce((a,x)=>a+x.subs,0)/Math.max(views,1)*1000,role=name==='쇼츠'?'발견·신규 유입':name==='오리지널'?'깊은 시청·브랜드':name==='칼럼'?'시의성·관점':name==='라이브'?'관계·체류':'기본 도달';return `<button class="format-card ${$('#clusterFormat').value===name?'active':''}" data-format="${name}"><span>${name}</span><strong>${items.length}편</strong><small>조회 비중 ${(views/Math.max(totalViews,1)*100).toFixed(1)}% · 시청률 ${ret.toFixed(1)}%</small><em>${role} · 구독 ${subs.toFixed(1)}/천회</em></button>`}).join('');el.querySelectorAll('[data-format]').forEach(b=>b.onclick=()=>{$('#clusterFormat').value=$('#clusterFormat').value===b.dataset.format?'all':b.dataset.format;render()})}
+$('#clusterFormat').onchange=render;
+function correlation(a,b){if(a.length<3)return 0;const ma=a.reduce((x,y)=>x+y,0)/a.length,mb=b.reduce((x,y)=>x+y,0)/b.length,top=a.reduce((s,x,i)=>s+(x-ma)*(b[i]-mb),0),bot=Math.sqrt(a.reduce((s,x)=>s+(x-ma)**2,0)*b.reduce((s,x)=>s+(x-mb)**2,0));return bot?top/bot:0}
+function renderDeepAnalysis(d){
+  const el=$('#deepDive');
+  if(!el||!d.length){if(el)el.innerHTML='';return}
+  const sorted=[...d].sort((a,b)=>b.views-a.views);
+  const cut=Math.max(1,Math.ceil(d.length*.1)),top=sorted.slice(0,cut),rest=sorted.slice(cut);
+  const m=x=>median(x),rate=x=>x.subs/Math.max(x.views,1)*1000,eng=x=>(x.likes+x.comments)/Math.max(x.views,1)*100;
+  const topRet=m(top.map(x=>x.retention)),baseRet=m(rest.map(x=>x.retention));
+  const topSub=m(top.map(rate)),baseSub=m(rest.map(rate));
+  const logViews=d.map(x=>Math.log1p(x.views)),retCorr=correlation(logViews,d.map(x=>x.retention)),engCorr=correlation(logViews,d.map(eng));
+  const format=$('#clusterFormat').value==='all'?'전체 포맷':$('#clusterFormat').value;
+  let verdict;
+  if(format==='쇼츠') verdict='쇼츠는 높은 완주보다 롱폼으로 넘기는 연결성과 주제 테스트 성공률을 핵심 목표로 삼아야 합니다.';
+  else if(topSub>baseSub*1.4) verdict='상위 콘텐츠의 핵심 강점은 단순 조회가 아니라 신규 시청자를 구독자로 바꾸는 전문성과 주제 선택입니다.';
+  else verdict='상위 콘텐츠의 공통점을 제목보다 시청 만족과 참여 반응에서 찾아 후속 포맷으로 고정해야 합니다.';
+  const cards=[
+    ['TOP 10% DNA','상위권 구독 전환',topSub.toFixed(1)+'명','나머지 중앙값 '+baseSub.toFixed(1)+'명/천회',topSub>baseSub?'전문성·후속 기대가 히트의 핵심':'구독 전환보다 도달 기여가 큼','positive'],
+    ['WHAT DRIVES VIEWS','조회와 참여의 관계',engCorr.toFixed(2),'시청률 상관 '+retCorr.toFixed(2),engCorr>retCorr?'댓글·좋아요를 부르는 논점이 조회 확장과 더 가깝습니다.':'시청 지속이 조회 확장과 더 가깝습니다.',''],
+    ['RETENTION REALITY','상위권 시청률',topRet.toFixed(1)+'%','나머지 중앙값 '+baseRet.toFixed(1)+'%',topRet<baseRet?'대형 조회 영상은 넓은 유입 때문에 시청률이 낮아져도 실패가 아닙니다.':'상위권은 시청 만족도 함께 강합니다.',''],
+    ['PORTFOLIO ROLE',format==='쇼츠'?'쇼츠의 역할':'롱폼의 역할',format==='쇼츠'?'주제 검증':'팬 전환',format==='쇼츠'?'구독보다 롱폼 이동을 측정':'조회 1천 회당 구독을 측정',verdict,format==='쇼츠'?'critical':'positive'],
+    ['NEXT TEST','다음 4편 실험','2 × 2','상위 주제 2개 × 서사 2개','같은 주제에서 오프닝 구조만 바꿔 주제 효과와 제작 효과를 분리하세요.',''],
+    ['STOP RULE','중단 기준',m(d.map(x=>x.views)).toLocaleString()+'회','현재 포맷 조회 중앙값','2편 연속 중앙값 미달이면서 구독 전환도 하위 50%면 해당 조합을 중단하세요.','critical']
+  ];
+  const cardHtml=cards.map(x=>'<article class="deep-card '+x[5]+'"><span class="signal">'+x[0]+'</span><h4>'+x[1]+'</h4><strong>'+x[2]+'</strong><div class="evidence">'+x[3]+'</div><p>'+x[4]+'</p></article>').join('');
+  el.innerHTML='<div class="deep-head"><div><p class="eyebrow">DEEP DIAGNOSIS · '+format+'</p><h3>조회수가 아니라<br>반복 가능한 원인을 봅니다.</h3><p>'+d.length+'편의 상위 10%와 나머지를 분리해 성과 차이를 계산했습니다.</p></div><div class="deep-verdict"><span>EXECUTIVE VERDICT</span><b>'+verdict+'</b></div></div><div class="deep-grid">'+cardHtml+'</div>';
+}
