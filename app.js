@@ -96,3 +96,6 @@ function renderFullLibrary(d){
   body.innerHTML=html||'<tr><td colspan="10" class="library-empty">조건에 맞는 콘텐츠가 없습니다.</td></tr>';
 }
 $('#librarySearch').oninput=()=>renderFullLibrary(clusterFormatData(filtered()));$('#libraryTopic').onchange=()=>renderFullLibrary(clusterFormatData(filtered()));$('#libraryGroup').onchange=()=>renderFullLibrary(clusterFormatData(filtered()));$('#librarySort').onchange=()=>renderFullLibrary(clusterFormatData(filtered()));
+let automaticLoadStarted=false;
+async function autoLoadConnectedChannel(){try{const status=await fetch('/api/auth/status').then(r=>r.json());if(status.connected&&!automaticLoadStarted){automaticLoadStarted=true;document.querySelector('.status').innerHTML='<i></i> 실제 채널 데이터 불러오는 중';await loadApiData();const count=data.length;document.querySelector('.status').innerHTML='<i></i> LIVE API DATA · '+count+'편';$('#heroSummary').textContent='YouTube Analytics에서 실제 '+count+'편을 불러왔습니다. 콘텐츠 클러스터의 전체 근거 표에서 모든 영상을 확인할 수 있습니다.'}}catch(e){console.warn('자동 채널 로드 실패',e)}}
+autoLoadConnectedChannel();
