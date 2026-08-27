@@ -16,6 +16,8 @@
   <link rel="stylesheet" href="deep.css" />
   <link rel="stylesheet" href="library.css" />
   <link rel="stylesheet" href="grouping.css" />
+  <link rel="stylesheet" href="score-builder.css" />
+  <link rel="stylesheet" href="strategy-detail.css" />
 </head>
 <body>
   <div class="shell">
@@ -77,12 +79,13 @@
 
       <section id="clusters" class="view">
         <div class="section-head"><div><p class="eyebrow">CONTENT FAMILIES</p><h2>콘텐츠 클러스터</h2><p class="muted">먼저 포맷을 나누고, 같은 포맷 안에서 주제별 승리 공식을 찾습니다.</p></div><select id="clusterFormat" class="cluster-select"><option value="all">전체 포맷</option><option value="오리지널">오리지널</option><option value="칼럼">칼럼</option><option value="쇼츠">쇼츠</option><option value="일반 영상">일반 영상</option><option value="라이브">라이브</option></select></div>
+        <section class="score-builder"><div class="score-builder-head"><div><p class="eyebrow">SCORE MODEL</p><h3>종합점수 가중치</h3><p>비중을 바꾸면 모든 순위와 등급에 즉시 반영됩니다.</p></div><div><strong id="weightTotal">100%</strong><button id="resetWeights">기본값</button></div></div><div class="weight-grid" id="weightGrid"></div></section>
         <div class="format-strip" id="formatStrip"></div>
         <section class="deep-dive" id="deepDive"></section>
         <div class="cluster-summary" id="clusterSummary"></div>
         <div class="cluster-list" id="clusterList"></div>
         <section class="library-panel">
-          <div class="library-head"><div><p class="eyebrow">FULL EVIDENCE</p><h3>분석 대상 전체 콘텐츠</h3><p class="muted" id="libraryCount"></p></div><div class="library-tools"><input id="librarySearch" placeholder="영상 제목 검색"><select id="libraryTopic"><option value="all">전체 주제</option></select><select id="libraryGroup"><option value="topic">주제별 묶기</option><option value="format">포맷별 묶기</option><option value="month">게시 월별 묶기</option><option value="grade">스코어별 묶기</option><option value="none">그룹 없음</option></select><select id="librarySort"><option value="score">경쟁력 점수순</option><option value="views">조회수순</option><option value="retention">시청률순</option><option value="subs">구독 전환순</option><option value="engagement">참여율순</option><option value="date">최신순</option></select></div></div>
+          <div class="library-head"><div><p class="eyebrow">FULL EVIDENCE</p><h3>분석 대상 전체 콘텐츠</h3><p class="muted" id="libraryCount"></p></div><div class="library-tools"><input id="librarySearch" placeholder="영상 제목 검색"><select id="libraryTopic"><option value="all">전체 주제</option></select><select id="libraryGroup"><option value="topic">주제별 묶기</option><option value="format">포맷별 묶기</option><option value="month">게시 월별 묶기</option><option value="grade">스코어별 묶기</option><option value="none">그룹 없음</option></select><select id="librarySort"><option value="score">조정 종합점수순</option><option value="reach">도달력순</option><option value="velocity">성장 속도순</option><option value="satisfaction">시청 만족순</option><option value="conversion">팬 전환순</option><option value="engagement">참여도순</option><option value="views">조회수순</option><option value="retention">시청률순</option><option value="date">최신순</option></select></div></div>
           <div class="table-wrap"><table><thead><tr><th>#</th><th>콘텐츠</th><th>스코어</th><th>포맷</th><th>주제</th><th>조회수</th><th>시청률</th><th>평균 시청</th><th>구독/천회</th><th>참여율</th></tr></thead><tbody id="fullLibrary"></tbody></table></div>
         </section>
       </section>
@@ -91,6 +94,8 @@
         <div class="section-head"><div><p class="eyebrow">NEXT MOVES</p><h2>성장 전략</h2><p class="muted">현재 데이터에서 가장 기대값이 큰 실행 과제입니다.</p></div></div>
         <div class="strategy-hero"><span>90일 성장 시나리오</span><h2>“깊이는 유지하고,<br>발견될 확률을 높인다.”</h2><p>안될공학의 강점은 어려운 기술을 맥락으로 설명하는 힘입니다. 다음 성장은 주제 선택보다 패키징의 일관성과 시리즈 설계에서 나옵니다.</p></div>
         <div class="strategy-grid" id="strategyGrid"></div>
+        <section id="strategyEvidence" class="strategy-evidence"></section>
+        <section id="experimentBoard" class="experiment-board"></section>
       </section>
     </main>
   </div>
