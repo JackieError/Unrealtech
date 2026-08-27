@@ -15,7 +15,7 @@ SCOPES='https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.
 TOKEN_FILE=ROOT/'token.json'
 try: saved_token=json.loads(TOKEN_FILE.read_text()) if TOKEN_FILE.exists() else None
 except Exception: saved_token=None
-session={'state':None,'token':saved_token}
+session={'state':None,'token':saved_token};market_cache={}
 def save_token(value):
     TOKEN_FILE.write_text(json.dumps(value));os.chmod(TOKEN_FILE,0o600);session['token']=value
 def request(url,access=None,data=None,json_data=None):
@@ -51,6 +51,20 @@ def reporting_setup(access):
         if not any(j.get('reportTypeId')==report_type for j in existing):
             made.append(request('https://youtubereporting.googleapis.com/v1/jobs',access,json_data={'reportTypeId':report_type,'name':name}))
     return existing+made
+def market_signal(access,topic):
+    queries={'AI·컴퓨팅':'AI 엔비디아 인공지능','반도체·메모리':'반도체 HBM 메모리','우주·모빌리티':'SpaceX 우주 모빌리티','빅테크 전략':'애플 구글 메타','산업·에너지':'전력 에너지 산업','기술 인사이트':'기술 산업 전망'}
+    query=queries.get(topic,topic)[:60]
+    if topic in market_cache and market_cache[topic]['expires']>time.time():return market_cache[topic]['data']
+    after=time.strftime('%Y-%m-%dT00:00:00Z',time.gmtime(time.time()-30*86400))
+    params={'part':'snippet','q':query,'type':'video','regionCode':'KR','relevanceLanguage':'ko','publishedAfter':after,'order':'viewCount','maxResults':10}
+    found=request('https://www.googleapis.com/youtube/v3/search?'+urllib.parse.urlencode(params),access)
+    ids=[x.get('id',{}).get('videoId') for x in found.get('items',[]) if x.get('id',{}).get('videoId')];videos=[]
+    if ids:
+        raw=request('https://www.googleapis.com/youtube/v3/videos?'+urllib.parse.urlencode({'part':'snippet,statistics','id':','.join(ids)}),access)
+        for v in raw.get('items',[]):videos.append({'title':v.get('snippet',{}).get('title',''),'channel':v.get('snippet',{}).get('channelTitle',''),'views':int(v.get('statistics',{}).get('viewCount',0))})
+    ordered=sorted(videos,key=lambda x:x['views'],reverse=True);values=sorted(x['views'] for x in videos)
+    result={'topic':topic,'query':query,'supply':found.get('pageInfo',{}).get('totalResults',0),'competitorMedian':values[len(values)//2] if values else 0,'leaders':ordered[:3]}
+    market_cache[topic]={'expires':time.time()+21600,'data':result};return result
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self,*a,**kw):super().__init__(*a,directory=str(ROOT),**kw)
     def send_json(self,obj,status=200):
@@ -88,6 +102,11 @@ class Handler(SimpleHTTPRequestHandler):
                 if not access:return self.send_json({'error':'YouTube 계정 연결이 필요합니다.'},401)
                 jobs=reporting_setup(access)
                 return self.send_json({'jobs':[{'id':j.get('id'),'name':j.get('name'),'reportTypeId':j.get('reportTypeId'),'createTime':j.get('createTime')} for j in jobs]})
+            if path.path=='/api/market/signals':
+                access=access_token()
+                if not access:return self.send_json({'error':'YouTube 계정 연결이 필요합니다.'},401)
+                topics=urllib.parse.parse_qs(path.query).get('topic',[])[:6]
+                return self.send_json({'signals':[market_signal(access,x) for x in topics]})
             return super().do_GET()
         except urllib.error.HTTPError as e:
             try:detail=json.loads(e.read()).get('error',{}).get('message',str(e))
