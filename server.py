@@ -34,9 +34,18 @@ def access_token():
     t.update(n);t['expires_at']=time.time()+n.get('expires_in',3600);save_token(t);return t.get('access_token')
 def analytics(access,start,end):
     metrics='views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained,subscribersLost,likes,comments'
-    q=urllib.parse.urlencode({'ids':'channel==MINE','startDate':start,'endDate':end,'metrics':metrics,'dimensions':'video','sort':'-views','maxResults':200})
-    raw=request('https://youtubeanalytics.googleapis.com/v2/reports?'+q,access);heads=[h['name'] for h in raw.get('columnHeaders',[])]
-    return {r[0]:dict(zip(heads,r)) for r in raw.get('rows',[])}
+    result={};start_index=1
+    while True:
+        q=urllib.parse.urlencode({'ids':'channel==MINE','startDate':start,'endDate':end,'metrics':metrics,'dimensions':'video','sort':'-views','maxResults':200,'startIndex':start_index})
+        try:raw=request('https://youtubeanalytics.googleapis.com/v2/reports?'+q,access)
+        except urllib.error.HTTPError:
+            if start_index>1:break
+            raise
+        heads=[h['name'] for h in raw.get('columnHeaders',[])];rows=raw.get('rows',[])
+        for row in rows:result[row[0]]=dict(zip(heads,row))
+        if len(rows)<200 or start_index>=1000:break
+        start_index+=200
+    return result
 def analytics_report(access,start,end,dimensions,metrics,sort=None,max_results=200):
     params={'ids':'channel==MINE','startDate':start,'endDate':end,'metrics':metrics,'dimensions':dimensions,'maxResults':max_results}
     if sort:params['sort']=sort
@@ -101,7 +110,7 @@ class Handler(SimpleHTTPRequestHandler):
             if path.path=='/api/youtube/data':
                 access=access_token()
                 if not access:return self.send_json({'error':'YouTube 계정 연결이 필요합니다.'},401)
-                end=time.strftime('%Y-%m-%d');start=time.strftime('%Y-%m-%d',time.localtime(time.time()-90*86400));stats=analytics(access,start,end);ids=list(stats);items=[]
+                query=urllib.parse.parse_qs(path.query);days=max(30,min(1825,int(query.get('days',['730'])[0])));end=time.strftime('%Y-%m-%d');start=time.strftime('%Y-%m-%d',time.localtime(time.time()-days*86400));stats=analytics(access,start,end);ids=list(stats);items=[]
                 try:playlist_map=playlist_types(access)
                 except Exception:playlist_map={}
                 for i in range(0,len(ids),50):
@@ -115,7 +124,7 @@ class Handler(SimpleHTTPRequestHandler):
                 for key,dim in [('traffic','insightTrafficSourceType'),('devices','deviceType'),('countries','country'),('subscribers','subscribedStatus')]:
                     try:extras[key]=analytics_report(access,start,end,dim,'views,estimatedMinutesWatched','-views',25)
                     except Exception:extras[key]=[]
-                return self.send_json({'items':items,'breakdowns':extras,'period':{'start':start,'end':end}})
+                return self.send_json({'items':items,'breakdowns':extras,'period':{'start':start,'end':end,'days':days}})
             if path.path=='/api/reporting/setup':
                 access=access_token()
                 if not access:return self.send_json({'error':'YouTube 계정 연결이 필요합니다.'},401)

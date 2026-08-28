@@ -39,7 +39,7 @@
       <header>
         <div><p class="eyebrow">CHANNEL INTELLIGENCE</p><h1 id="pageTitle">채널 개요</h1></div>
         <div class="header-actions">
-          <label class="period">기간 <select id="periodSelect"><option value="all">최근 90일</option><option value="30">최근 30일</option><option value="60">최근 60일</option></select></label>
+          <label class="period">기간 <select id="periodSelect"><option value="90">최근 90일</option><option value="365">최근 1년</option><option value="730" selected>최근 2년</option><option value="1825">최근 5년</option></select></label>
           <button class="primary" id="headerImport">＋ Studio CSV 가져오기</button>
         </div>
       </header>
@@ -85,7 +85,7 @@
         <div class="cluster-summary" id="clusterSummary"></div>
         <div class="cluster-list" id="clusterList"></div>
         <section class="library-panel">
-          <div class="library-head"><div><p class="eyebrow">FULL EVIDENCE</p><h3>분석 대상 전체 콘텐츠</h3><p class="muted" id="libraryCount"></p></div><div class="library-tools"><input id="librarySearch" placeholder="영상 제목 검색"><select id="libraryTopic"><option value="all">전체 주제</option></select><select id="libraryGroup"><option value="topic">주제별 묶기</option><option value="format">포맷별 묶기</option><option value="month">게시 월별 묶기</option><option value="grade">스코어별 묶기</option><option value="none">그룹 없음</option></select><select id="librarySort"><option value="score">조정 종합점수순</option><option value="reach">도달력순</option><option value="velocity">성장 속도순</option><option value="satisfaction">시청 만족순</option><option value="conversion">팬 전환순</option><option value="engagement">참여도순</option><option value="views">조회수순</option><option value="retention">시청률순</option><option value="date">최신순</option></select></div></div>
+          <div class="library-head"><div><p class="eyebrow">FULL EVIDENCE</p><h3>분석 대상 전체 콘텐츠</h3><p class="muted" id="libraryCount"></p></div><div class="library-tools"><input id="librarySearch" placeholder="영상 제목 검색"><select id="libraryTopic"><option value="all">전체 주제</option></select><select id="libraryGroup"><option value="macro">대분류별 묶기</option><option value="topic">세부 카테고리별 묶기</option><option value="format">포맷별 묶기</option><option value="month">게시 월별 묶기</option><option value="grade">스코어별 묶기</option><option value="none">그룹 없음</option></select><select id="librarySort"><option value="score">조정 종합점수순</option><option value="reach">도달력순</option><option value="velocity">성장 속도순</option><option value="satisfaction">시청 만족순</option><option value="conversion">팬 전환순</option><option value="engagement">참여도순</option><option value="views">조회수순</option><option value="retention">시청률순</option><option value="date">최신순</option></select></div></div>
           <div class="table-wrap"><table><thead><tr><th>#</th><th>콘텐츠</th><th>스코어</th><th>포맷</th><th>주제</th><th>조회수</th><th>시청률</th><th>평균 시청</th><th>구독/천회</th><th>참여율</th></tr></thead><tbody id="fullLibrary"></tbody></table></div>
         </section>
       </section>
